@@ -1,3 +1,4 @@
+import { verifyToken } from '@clerk/express';
 import { clerkClient } from '../config/clerk';
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '../config/logger';
@@ -34,8 +35,10 @@ export const requireAuth = async (
   const token = authHeader.split(' ')[1];
 
   try {
-    // Vérifie et décode le JWT Clerk (sans appel réseau — vérification locale)
-    const payload = await clerkClient.verifyToken(token);
+    // verifyToken de @clerk/express — vérifie le JWT localement
+    const payload = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+    });
 
     // Récupère les metadata pour le rôle
     const user = await clerkClient.users.getUser(payload.sub);

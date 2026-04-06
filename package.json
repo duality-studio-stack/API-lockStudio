@@ -10,7 +10,7 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@clerk/clerk-sdk-node": "^5.0.0",
+    "@clerk/express": "^1.0.0",
     "@supabase/supabase-js": "^2.45.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -22,7 +22,7 @@
     "morgan": "^1.10.0",
     "svix": "^1.21.0",
     "winston": "^3.13.0",
-    "xss-clean": "^0.1.4",
+    "xss": "^1.0.15",
     "zod": "^3.23.8"
   },
   "devDependencies": {
