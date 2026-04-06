@@ -45,7 +45,7 @@ const createProfileSchema = updateProfileSchema.extend({
 // GET /pros — liste paginée avec filtres
 router.get('/', searchLimiter, validate(searchQuerySchema, 'query'), async (req, res, next) => {
   try {
-    const { category, minRating, maxPrice, isAtHome, page, limit } = req.query as z.infer<typeof searchQuerySchema>;
+    const { category, minRating, maxPrice, isAtHome, page, limit } = req.query as unknown as z.infer<typeof searchQuerySchema>;
     const offset = (page - 1) * limit;
 
     let query = supabase

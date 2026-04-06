@@ -20,8 +20,9 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at' | 'updated_at'>;
+        Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at' | 'updated_at' | 'phone'> & { phone?: string | null };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
+        Relationships: [];
       };
 
       pro_profiles: {
@@ -47,6 +48,7 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['pro_profiles']['Row'], 'id' | 'rating' | 'review_count' | 'created_at' | 'updated_at'>;
         Update: Partial<Database['public']['Tables']['pro_profiles']['Insert']>;
+        Relationships: [];
       };
 
       pro_specialties: {
@@ -57,6 +59,7 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['pro_specialties']['Row'], 'id'>;
         Update: never;
+        Relationships: [];
       };
 
       services: {
@@ -73,6 +76,7 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['services']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['services']['Insert']>;
+        Relationships: [];
       };
 
       appointments: {
@@ -91,8 +95,9 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['appointments']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Insert: Omit<Database['public']['Tables']['appointments']['Row'], 'id' | 'created_at' | 'updated_at' | 'payment_intent_id'> & { payment_intent_id?: string | null };
         Update: Partial<Database['public']['Tables']['appointments']['Insert']>;
+        Relationships: [];
       };
 
       reviews: {
@@ -108,6 +113,7 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['reviews']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['reviews']['Insert']>;
+        Relationships: [];
       };
 
       favorites: {
@@ -119,6 +125,7 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['favorites']['Row'], 'id' | 'created_at'>;
         Update: never;
+        Relationships: [];
       };
 
       ordonnances: {
@@ -134,6 +141,7 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['ordonnances']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['ordonnances']['Insert']>;
+        Relationships: [];
       };
 
       notifications: {
@@ -149,7 +157,10 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['notifications']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['notifications']['Insert']>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
 }
