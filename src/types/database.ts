@@ -11,8 +11,9 @@ export interface Database {
     Tables: {
       users: {
         Row: {
-          id: string;                  // clerk_user_id
+          id: string;                  // UUID généré automatiquement
           email: string;
+          password_hash: string;
           full_name: string;
           avatar_url: string | null;
           role: UserRole;
@@ -20,8 +21,8 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at' | 'updated_at' | 'phone'> & { phone?: string | null };
-        Update: Partial<Database['public']['Tables']['users']['Insert']>;
+        Insert: Omit<Database['public']['Tables']['users']['Row'], 'id' | 'created_at' | 'updated_at' | 'phone' | 'avatar_url'> & { phone?: string | null; avatar_url?: string | null };
+        Update: Partial<Omit<Database['public']['Tables']['users']['Row'], 'id' | 'created_at'>>;
         Relationships: [];
       };
 
@@ -46,7 +47,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['pro_profiles']['Row'], 'id' | 'rating' | 'review_count' | 'created_at' | 'updated_at'>;
+        Insert: Pick<Database['public']['Tables']['pro_profiles']['Row'], 'user_id' | 'business_name' | 'location'> & Partial<Omit<Database['public']['Tables']['pro_profiles']['Row'], 'id' | 'user_id' | 'business_name' | 'location' | 'rating' | 'review_count' | 'created_at' | 'updated_at'>>;
         Update: Partial<Database['public']['Tables']['pro_profiles']['Insert']>;
         Relationships: [];
       };
@@ -87,6 +88,7 @@ export interface Database {
           service_id: string;
           status: AppointmentStatus;
           scheduled_at: string;
+          ends_at: string;
           duration_minutes: number;
           price: number;
           notes: string | null;

@@ -6,6 +6,7 @@
 -- Extensions utiles
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "btree_gist";  -- requis pour EXCLUDE USING gist sur text/uuid
 
 -- ============================================================
 -- TYPES ENUM
@@ -18,12 +19,13 @@ CREATE TYPE ordonnance_status AS ENUM ('draft', 'sent', 'accepted', 'rejected');
 
 -- ============================================================
 -- TABLE : users
--- Synchronisée avec Clerk via webhook
+-- Auth maison JWT — pas de dépendance Clerk
 -- ============================================================
 
 CREATE TABLE public.users (
-  id            TEXT PRIMARY KEY,           -- clerk_user_id (ex: user_2abc...)
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email         TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
   full_name     TEXT NOT NULL,
   avatar_url    TEXT,
   role          user_role NOT NULL DEFAULT 'client',
@@ -47,7 +49,7 @@ ALTER TABLE public.users
 
 CREATE TABLE public.pro_profiles (
   id                   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id              TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id              UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   business_name        TEXT NOT NULL,
   description          TEXT,
   location             TEXT NOT NULL,
@@ -111,33 +113,33 @@ CREATE INDEX idx_services_category ON public.services(category);
 CREATE TABLE public.appointments (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   pro_id            UUID NOT NULL REFERENCES public.pro_profiles(id),
-  client_id         TEXT NOT NULL REFERENCES public.users(id),
+  client_id         UUID NOT NULL REFERENCES public.users(id),
   service_id        UUID NOT NULL REFERENCES public.services(id),
   status            appointment_status NOT NULL DEFAULT 'pending',
   scheduled_at      TIMESTAMPTZ NOT NULL,
+  ends_at           TIMESTAMPTZ NOT NULL,  -- scheduled_at + duration, calculé à l'insertion
   duration_minutes  INTEGER NOT NULL,
   price             INTEGER NOT NULL CHECK (price >= 0),  -- snapshot au moment de la résa
   notes             TEXT,
   payment_status    payment_status NOT NULL DEFAULT 'pending',
   payment_intent_id TEXT,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  -- Un client ne peut pas avoir deux RDV au même moment
-  CONSTRAINT no_double_booking_client EXCLUDE USING gist (
-    client_id WITH =,
-    tstzrange(scheduled_at, scheduled_at + (duration_minutes * INTERVAL '1 minute')) WITH &&
-  ),
-
-  -- Un pro ne peut pas avoir deux RDV au même moment
-  CONSTRAINT no_double_booking_pro EXCLUDE USING gist (
-    pro_id WITH =,
-    tstzrange(scheduled_at, scheduled_at + (duration_minutes * INTERVAL '1 minute')) WITH &&
-  )
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Activer l'extension pour les exclusions de plages (déjà installée sur Supabase)
-CREATE EXTENSION IF NOT EXISTS "btree_gist";
+-- Anti double-booking : un client ne peut pas avoir deux RDV qui se chevauchent
+ALTER TABLE public.appointments
+  ADD CONSTRAINT no_double_booking_client EXCLUDE USING gist (
+    client_id WITH =,
+    tstzrange(scheduled_at, ends_at) WITH &&
+  );
+
+-- Anti double-booking : un pro ne peut pas avoir deux RDV qui se chevauchent
+ALTER TABLE public.appointments
+  ADD CONSTRAINT no_double_booking_pro EXCLUDE USING gist (
+    pro_id WITH =,
+    tstzrange(scheduled_at, ends_at) WITH &&
+  );
 
 CREATE INDEX idx_appointments_pro_id ON public.appointments(pro_id);
 CREATE INDEX idx_appointments_client_id ON public.appointments(client_id);
@@ -205,7 +207,7 @@ CREATE INDEX idx_ordonnances_client_id ON public.ordonnances(client_id);
 
 CREATE TABLE public.notifications (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id     TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   title       TEXT NOT NULL,
   body        TEXT NOT NULL,
   type        TEXT NOT NULL,
@@ -297,14 +299,17 @@ CREATE POLICY "reviews visibles" ON public.reviews
 
 -- Policies : un utilisateur ne voit que ses propres données
 -- (utilisées si on expose directement Supabase au client — déconseillé)
+-- Policies d'accès direct désactivées : l'API utilise service_role_key côté serveur
+-- Les données sont protégées par le JWT vérifié dans le middleware Express
+-- Ces policies restent en place pour d'éventuels accès futurs via Supabase Auth
 CREATE POLICY "user voit son profil" ON public.users
-  FOR ALL USING (auth.uid()::text = id);
+  FOR ALL USING (false);
 
 CREATE POLICY "client voit ses rdv" ON public.appointments
-  FOR SELECT USING (auth.uid()::text = client_id);
+  FOR SELECT USING (false);
 
 CREATE POLICY "client gère ses favoris" ON public.favorites
-  FOR ALL USING (auth.uid()::text = client_id);
+  FOR ALL USING (false);
 
 CREATE POLICY "user voit ses notifs" ON public.notifications
-  FOR ALL USING (auth.uid()::text = user_id);
+  FOR ALL USING (false);

@@ -1,7 +1,8 @@
-import { verifyToken } from '@clerk/express';
-import { clerkClient } from '../config/clerk';
+import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '../config/logger';
+
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 // Étend le type Request pour y attacher l'utilisateur vérifié
 declare global {
@@ -10,21 +11,20 @@ declare global {
       auth?: {
         userId: string;
         role: 'client' | 'pro';
-        email: string;
       };
     }
   }
 }
 
 // ──────────────────────────────────────────────
-// requireAuth — vérifie le token Clerk Bearer
+// requireAuth — vérifie le token JWT Bearer
 // Attache req.auth si valide, rejette sinon
 // ──────────────────────────────────────────────
-export const requireAuth = async (
+export const requireAuth = (
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<void> => {
+): void => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith('Bearer ')) {
@@ -35,25 +35,16 @@ export const requireAuth = async (
   const token = authHeader.split(' ')[1];
 
   try {
-    // verifyToken de @clerk/express — vérifie le JWT localement
-    const payload = await verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY,
-    });
-
-    // Récupère les metadata pour le rôle
-    const user = await clerkClient.users.getUser(payload.sub);
-    const role = (user.publicMetadata?.role as 'client' | 'pro') ?? 'client';
-    const email = user.emailAddresses[0]?.emailAddress ?? '';
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: string; role: 'client' | 'pro' };
 
     req.auth = {
-      userId: payload.sub,
-      role,
-      email,
+      userId: payload.userId,
+      role: payload.role,
     };
 
     next();
   } catch (err) {
-    logger.warn('Token Clerk invalide', { error: err, ip: req.ip });
+    logger.warn('Token JWT invalide', { error: err, ip: req.ip });
     res.status(401).json({ error: 'Token invalide ou expiré.' });
   }
 };

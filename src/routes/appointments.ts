@@ -141,6 +141,9 @@ router.post(
         return;
       }
 
+      // Calcule ends_at pour la contrainte d'exclusion (pas de double booking)
+      const endsAt = new Date(new Date(scheduled_at).getTime() + service.duration_minutes * 60_000).toISOString();
+
       const { data, error } = await supabase
         .from('appointments')
         .insert({
@@ -148,6 +151,7 @@ router.post(
           client_id: req.auth!.userId,
           service_id,
           scheduled_at,
+          ends_at: endsAt,
           duration_minutes: service.duration_minutes,
           price: service.price,         // prix snapshot — pas modifiable après
           notes: notes ?? null,

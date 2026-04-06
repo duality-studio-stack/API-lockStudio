@@ -14,7 +14,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logger } from './config/logger';
 
 // Routes
-import webhookRouter from './routes/webhook';
+import authRouter from './routes/auth';
 import prosRouter from './routes/pros';
 import appointmentsRouter from './routes/appointments';
 import servicesRouter from './routes/services';
@@ -27,19 +27,13 @@ const app = express();
 // ──────────────────────────────────────────────
 // Sécurité — ordre critique
 // ──────────────────────────────────────────────
-app.set('trust proxy', 1);   // Nécessaire pour lire req.ip derrière un reverse proxy (Railway, Render, etc.)
+app.set('trust proxy', 1);
 app.use(removePoweredBy);
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
 
 // ──────────────────────────────────────────────
-// Webhook Clerk : doit recevoir le body RAW (avant express.json)
-// Important : svix vérifie la signature sur le body brut
-// ──────────────────────────────────────────────
-app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
-
-// ──────────────────────────────────────────────
-// Parsing (limité à 10kb pour éviter les payloads XXL)
+// Parsing
 // ──────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
@@ -67,7 +61,7 @@ app.use(
 );
 
 // ──────────────────────────────────────────────
-// Health check (pas de rate limit, pas de log)
+// Health check
 // ──────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -76,6 +70,7 @@ app.get('/health', (_req, res) => {
 // ──────────────────────────────────────────────
 // Routes API
 // ──────────────────────────────────────────────
+app.use('/api/auth', authRouter);
 app.use('/api/pros', prosRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/services', servicesRouter);
